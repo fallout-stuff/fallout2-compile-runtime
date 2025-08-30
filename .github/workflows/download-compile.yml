@@ -25,11 +25,23 @@ jobs:
         echo "Latest release: $RELEASE_TAG"
         echo "Release URL: $RELEASE_URL"
 
-    - name: Find compile.exe asset
+        - name: Find compile.exe asset
       id: find_asset
       run: |
         # Get the latest release info and find compile.exe
         RELEASE_INFO=$(curl -s https://api.github.com/repos/sfall-team/sslc/releases/latest)
+
+        # Check if release exists and has assets
+        if [ "$(echo "$RELEASE_INFO" | jq -r '.message')" = "Not Found" ]; then
+          echo "Repository or release not found"
+          exit 1
+        fi
+
+        if [ "$(echo "$RELEASE_INFO" | jq -r '.assets')" = "null" ]; then
+          echo "No assets found in latest release"
+          exit 1
+        fi
+
         COMPILE_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name | contains("compile.exe")) | .browser_download_url' | head -1)
         COMPILE_NAME=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name | contains("compile.exe")) | .name' | head -1)
 
