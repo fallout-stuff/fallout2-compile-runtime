@@ -25,9 +25,35 @@ jobs:
         rm -rf ./scripts
         rm -rf ./bin
 
+    - name: Cache Fallout2 Restoration Project
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/fallout2-restoration
+        key: fallout2-restoration-${{ hashFiles('**/fallout2-runtime-binaries.zip') }}
+        restore-keys: |
+          fallout2-restoration-
+
+    - name: Cache sfall
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/sfall
+        key: sfall-${{ hashFiles('**/fallout2-runtime-binaries.zip') }}
+        restore-keys: |
+          sfall-
+
     - name: Clone Fallout2 Restoration Project
       run: |
-        git clone https://github.com/BGforgeNet/Fallout2_Restoration_Project.git
+        if [ -d "~/.cache/fallout2-restoration" ]; then
+          echo "Using cached Fallout2 Restoration Project"
+          cp -r ~/.cache/fallout2-restoration ./Fallout2_Restoration_Project
+        else
+          echo "Cloning Fallout2 Restoration Project"
+          git clone https://github.com/BGforgeNet/Fallout2_Restoration_Project.git
+          mkdir -p ~/.cache/fallout2-restoration
+          cp -r Fallout2_Restoration_Project/* ~/.cache/fallout2-restoration/
+        fi
 
     - name: Move headers and scripts
       run: |
@@ -36,7 +62,15 @@ jobs:
 
     - name: Clone sfall
       run: |
-        git clone https://github.com/sfall-team/sfall.git
+        if [ -d "~/.cache/sfall" ]; then
+          echo "Using cached sfall"
+          cp -r ~/.cache/sfall ./sfall
+        else
+          echo "Cloning sfall"
+          git clone https://github.com/sfall-team/sfall.git
+          mkdir -p ~/.cache/sfall
+          cp -r sfall/* ~/.cache/sfall/
+        fi
 
     - name: Move sfall headers
       run: |
