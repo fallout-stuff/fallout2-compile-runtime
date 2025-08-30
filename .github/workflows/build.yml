@@ -2,9 +2,9 @@ name: Build Fallout2 Runtime
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    tags:
+      - 'v*'
+      - '*'
   workflow_dispatch:
 
 jobs:
@@ -25,12 +25,36 @@ jobs:
         rm -rf ./scripts
         rm -rf ./bin
 
+    - name: Cache Fallout2 Restoration Project
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/fallout2-restoration.zip
+        key: fallout2-restoration-${{ hashFiles('**/fallout2-runtime-binaries.zip') }}
+        restore-keys: |
+          fallout2-restoration-
+
+    - name: Cache sfall
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/sfall.zip
+        key: sfall-${{ hashFiles('**/fallout2-runtime-binaries.zip') }}
+        restore-keys: |
+          sfall-
+
 
 
     - name: Download Fallout2 Restoration Project
       run: |
-        echo "Downloading Fallout2 Restoration Project"
-        curl -L -o fallout2-restoration.zip https://github.com/BGforgeNet/Fallout2_Restoration_Project/archive/refs/heads/master.zip
+        if [ -f "~/.cache/fallout2-restoration.zip" ]; then
+          echo "Using cached Fallout2 Restoration Project"
+          cp ~/.cache/fallout2-restoration.zip ./fallout2-restoration.zip
+        else
+          echo "Downloading Fallout2 Restoration Project"
+          curl -L -o fallout2-restoration.zip https://github.com/BGforgeNet/Fallout2_Restoration_Project/archive/refs/heads/master.zip
+          cp fallout2-restoration.zip ~/.cache/fallout2-restoration.zip
+        fi
         unzip -q fallout2-restoration.zip
         mv Fallout2_Restoration_Project-master Fallout2_Restoration_Project
 
@@ -41,8 +65,14 @@ jobs:
 
     - name: Download sfall
       run: |
-        echo "Downloading sfall"
-        curl -L -o sfall.zip https://github.com/sfall-team/sfall/archive/refs/heads/master.zip
+        if [ -f "~/.cache/sfall.zip" ]; then
+          echo "Using cached sfall"
+          cp ~/.cache/sfall.zip ./sfall.zip
+        else
+          echo "Downloading sfall"
+          curl -L -o sfall.zip https://github.com/sfall-team/sfall/archive/refs/heads/master.zip
+          cp sfall.zip ~/.cache/sfall.zip
+        fi
         unzip -q sfall.zip
         mv sfall-master sfall
 
@@ -76,43 +106,31 @@ jobs:
           scripts/
           bin/
 
-    - name: Get latest tag and check if it matches current commit
+        - name: Get tag info
       id: get_tag
       run: |
-        # Get the latest tag sorted by version
-        LATEST_TAG=$(git tag --list | sort -V | tail -1 || echo "0.1.0")
+        # Get the current tag that triggered this workflow
+        CURRENT_TAG=${GITHUB_REF#refs/tags/}
         # Remove 'v' prefix if it exists
-        VERSION=${LATEST_TAG#v}
-        # Check if the latest tag points to the current commit
-        TAG_COMMIT=$(git rev-list -n 1 $LATEST_TAG 2>/dev/null || echo "")
-        CURRENT_COMMIT=$(git rev-parse HEAD)
-        TAG_MATCHES_COMMIT=false
+        VERSION=${CURRENT_TAG#v}
 
-        if [ "$TAG_COMMIT" = "$CURRENT_COMMIT" ]; then
-          TAG_MATCHES_COMMIT=true
-        fi
-
-        echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+        echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
         echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "tag_matches_commit=$TAG_MATCHES_COMMIT" >> $GITHUB_OUTPUT
-        echo "Using tag: $LATEST_TAG"
+        echo "Using tag: $CURRENT_TAG"
         echo "Version: $VERSION"
-        echo "Tag matches current commit: $TAG_MATCHES_COMMIT"
 
     - name: Create release zip
-      if: steps.get_tag.outputs.tag_matches_commit == 'true' && github.event_name == 'push'
       run: |
         # Create a zip file with the specific naming format
         zip -r fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip headers/ scripts/ bin/
         echo "Created: fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip"
 
     - name: Create release
-      if: steps.get_tag.outputs.tag_matches_commit == 'true' && github.event_name == 'push'
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        # Create a new release with the latest tag
-        gh release create ${{ steps.get_tag.outputs.latest_tag }} \
+        # Create a new release with the current tag
+        gh release create ${{ steps.get_tag.outputs.current_tag }} \
           --title "Fallout2 Runtime ${{ steps.get_tag.outputs.version }}" \
           --notes "Automated release of Fallout2 runtime with headers, scripts, and binaries." \
           fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip
