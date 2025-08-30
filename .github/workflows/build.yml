@@ -25,52 +25,26 @@ jobs:
         rm -rf ./scripts
         rm -rf ./bin
 
-    - name: Cache Fallout2 Restoration Project
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/fallout2-restoration
-        key: fallout2-restoration-${{ hashFiles('**/fallout2-runtime-binaries.zip') }}
-        restore-keys: |
-          fallout2-restoration-
 
-    - name: Cache sfall
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/sfall
-        key: sfall-${{ hashFiles('**/fallout2-runtime-binaries.zip') }}
-        restore-keys: |
-          sfall-
 
-    - name: Clone Fallout2 Restoration Project
+    - name: Download Fallout2 Restoration Project
       run: |
-        if [ -d "~/.cache/fallout2-restoration" ]; then
-          echo "Using cached Fallout2 Restoration Project"
-          cp -r ~/.cache/fallout2-restoration ./Fallout2_Restoration_Project
-        else
-          echo "Cloning Fallout2 Restoration Project"
-          git clone https://github.com/BGforgeNet/Fallout2_Restoration_Project.git
-          mkdir -p ~/.cache/fallout2-restoration
-          cp -r Fallout2_Restoration_Project/* ~/.cache/fallout2-restoration/
-        fi
+        echo "Downloading Fallout2 Restoration Project"
+        curl -L -o fallout2-restoration.zip https://github.com/BGforgeNet/Fallout2_Restoration_Project/archive/refs/heads/master.zip
+        unzip -q fallout2-restoration.zip
+        mv Fallout2_Restoration_Project-master Fallout2_Restoration_Project
 
     - name: Move headers and scripts
       run: |
         mv Fallout2_Restoration_Project/scripts_src/headers ./headers
         mv Fallout2_Restoration_Project/scripts_src ./scripts
 
-    - name: Clone sfall
+    - name: Download sfall
       run: |
-        if [ -d "~/.cache/sfall" ]; then
-          echo "Using cached sfall"
-          cp -r ~/.cache/sfall ./sfall
-        else
-          echo "Cloning sfall"
-          git clone https://github.com/sfall-team/sfall.git
-          mkdir -p ~/.cache/sfall
-          cp -r sfall/* ~/.cache/sfall/
-        fi
+        echo "Downloading sfall"
+        curl -L -o sfall.zip https://github.com/sfall-team/sfall/archive/refs/heads/master.zip
+        unzip -q sfall.zip
+        mv sfall-master sfall
 
     - name: Move sfall headers
       run: |
@@ -106,7 +80,7 @@ jobs:
       id: get_tag
       run: |
         # Get the latest tag sorted by version
-        LATEST_TAG=$(git tag --list | sort -V | tail -1 || echo "v1.0.0")
+        LATEST_TAG=$(git tag --list | sort -V | tail -1 || echo "0.1.0")
         # Remove 'v' prefix if it exists
         VERSION=${LATEST_TAG#v}
         # Check if the latest tag points to the current commit
@@ -126,14 +100,14 @@ jobs:
         echo "Tag matches current commit: $TAG_MATCHES_COMMIT"
 
     - name: Create release zip
-      if: steps.get_tag.outputs.tag_matches_commit == 'true' && steps.check_release.outputs.release_exists == '0' && github.event_name == 'push'
+      if: steps.get_tag.outputs.tag_matches_commit == 'true' && github.event_name == 'push'
       run: |
         # Create a zip file with the specific naming format
         zip -r fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip headers/ scripts/ bin/
         echo "Created: fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip"
 
     - name: Create release
-      if: steps.get_tag.outputs.tag_matches_commit == 'true' && steps.check_release.outputs.release_exists == '0' && github.event_name == 'push'
+      if: steps.get_tag.outputs.tag_matches_commit == 'true' && github.event_name == 'push'
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
