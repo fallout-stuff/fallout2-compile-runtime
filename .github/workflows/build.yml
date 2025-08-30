@@ -25,6 +25,49 @@ jobs:
         rm -rf ./scripts
         rm -rf ./bin
 
+    - name: Download and extract Watcom ISO
+      run: |
+        echo "Downloading Watcom CPP 11.0 ISO..."
+        curl -L -o watcom.7z "https://dl-alt1.winworldpc.com/Watcom%20CPP%2011.0%20B%20(CD).7z"
+
+        echo "Extracting 7z archive..."
+        7z x watcom.7z -o./watcom_extract
+
+        echo "Finding ISO file..."
+        ISO_FILE=$(find ./watcom_extract -name "*.iso" | head -1)
+
+        if [ -n "$ISO_FILE" ]; then
+          echo "Found ISO: $ISO_FILE"
+          echo "Mounting ISO and extracting files..."
+
+          # Create mount point
+          mkdir -p ./iso_mount
+
+          # Mount ISO (using 7z to extract ISO contents)
+          7z x "$ISO_FILE" -o./iso_mount
+
+          # Extract specific files to bin directory
+          mkdir -p ./bin
+          if [ -f "./iso_mount/binnt/wcc386.exe" ]; then
+            cp ./iso_mount/binnt/wcc386.exe ./bin/
+            echo "Extracted wcc386.exe"
+          else
+            echo "wcc386.exe not found in ISO"
+          fi
+
+          if [ -f "./iso_mount/binnt/wccd386.dll" ]; then
+            cp ./iso_mount/binnt/wccd386.dll ./bin/
+            echo "Extracted wccd386.dll"
+          else
+            echo "wccd386.dll not found in ISO"
+          fi
+
+          ls -la ./bin/
+        else
+          echo "No ISO file found in archive"
+          exit 1
+        fi
+
     - name: Cache Fallout2 Restoration Project
       uses: actions/cache@v4
       with:
@@ -94,6 +137,7 @@ jobs:
         echo "Final project structure:"
         find . -type f -name "*.h" | head -10
         find . -type f -name "*.ssl" | head -10
+        ls -la ./bin/
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -102,6 +146,7 @@ jobs:
         path: |
           headers/
           scripts/
+          bin/
 
     - name: Get tag info
       id: get_tag
@@ -119,7 +164,7 @@ jobs:
     - name: Create release zip
       run: |
         # Create a zip file with the specific naming format
-        zip -r fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip headers/ scripts/
+        zip -r fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip headers/ scripts/ bin/
         echo "Created: fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip"
 
     - name: Create release
@@ -129,5 +174,5 @@ jobs:
         # Create a new release with the current tag
         gh release create ${{ steps.get_tag.outputs.current_tag }} \
           --title "Fallout2 Script Compile Runtime ${{ steps.get_tag.outputs.version }}" \
-          --notes "Automated release of Fallout2 runtime with headers and scripts." \
+          --notes "Automated release of Fallout2 runtime with headers, scripts, and Watcom compiler binaries." \
           fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip
