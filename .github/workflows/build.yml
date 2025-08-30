@@ -106,7 +106,7 @@ jobs:
           scripts/
           bin/
 
-        - name: Get tag info
+    - name: Get tag info
       id: get_tag
       run: |
         # Get the current tag that triggered this workflow
