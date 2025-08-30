@@ -102,17 +102,28 @@ jobs:
           scripts/
           bin/
 
-    - name: Get latest tag
+    - name: Get latest tag and check if it matches current commit
       id: get_tag
       run: |
-        # Get the latest tag from the repository
-        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+        # Get the latest tag sorted by version
+        LATEST_TAG=$(git tag --list | sort -V | tail -1 || echo "v1.0.0")
         # Remove 'v' prefix if it exists
         VERSION=${LATEST_TAG#v}
+        # Check if the latest tag points to the current commit
+        TAG_COMMIT=$(git rev-list -n 1 $LATEST_TAG 2>/dev/null || echo "")
+        CURRENT_COMMIT=$(git rev-parse HEAD)
+        TAG_MATCHES_COMMIT=false
+
+        if [ "$TAG_COMMIT" = "$CURRENT_COMMIT" ]; then
+          TAG_MATCHES_COMMIT=true
+        fi
+
         echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
         echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "tag_matches_commit=$TAG_MATCHES_COMMIT" >> $GITHUB_OUTPUT
         echo "Using tag: $LATEST_TAG"
         echo "Version: $VERSION"
+        echo "Tag matches current commit: $TAG_MATCHES_COMMIT"
 
     - name: Check if release exists
       id: check_release
@@ -125,14 +136,14 @@ jobs:
         echo "Release exists: $RELEASE_EXISTS"
 
     - name: Create release zip
-      if: steps.check_release.outputs.release_exists == '0' && github.event_name == 'push'
+      if: steps.get_tag.outputs.tag_matches_commit == 'true' && steps.check_release.outputs.release_exists == '0' && github.event_name == 'push'
       run: |
         # Create a zip file with the specific naming format
         zip -r fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip headers/ scripts/ bin/
         echo "Created: fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip"
 
     - name: Create release
-      if: steps.check_release.outputs.release_exists == '0' && github.event_name == 'push'
+      if: steps.get_tag.outputs.tag_matches_commit == 'true' && steps.check_release.outputs.release_exists == '0' && github.event_name == 'push'
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
