@@ -92,6 +92,18 @@ jobs:
         mkdir -p ./bin
         unzip fallout2-runtime-binaries.zip -d ./bin/
 
+    - name: Download latest compile.exe from sslc
+      run: |
+        # Get the latest release info and download compile.exe
+        LATEST_RELEASE_URL=$(curl -s https://api.github.com/repos/sfall-team/sslc/releases/latest | jq -r '.assets[] | select(.name | contains("compile.exe")) | .browser_download_url' | head -1)
+
+        if [ "$LATEST_RELEASE_URL" != "null" ] && [ -n "$LATEST_RELEASE_URL" ]; then
+          echo "Downloading compile.exe from: $LATEST_RELEASE_URL"
+          curl -L -o ./bin/compile.exe "$LATEST_RELEASE_URL"
+        else
+          echo "No compile.exe found in latest sslc release"
+        fi
+
     - name: List final structure
       run: |
         echo "Final project structure:"
