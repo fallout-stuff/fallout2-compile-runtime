@@ -82,6 +82,8 @@ jobs:
 
     - name: Check if release exists
       id: check_release
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         # Check if a release with this tag already exists
         RELEASE_EXISTS=$(gh release list --limit 1000 | grep -c "${{ steps.get_tag.outputs.latest_tag }}" || echo "0")
@@ -97,6 +99,8 @@ jobs:
 
     - name: Create release
       if: steps.check_release.outputs.release_exists == '0' && github.event_name == 'push'
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         # Create a new release with the latest tag
         gh release create ${{ steps.get_tag.outputs.latest_tag }} \
