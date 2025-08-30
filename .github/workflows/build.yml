@@ -47,6 +47,7 @@ jobs:
 
     - name: Download Fallout2 Restoration Project
       run: |
+        mkdir -p ~/.cache
         if [ -f "~/.cache/fallout2-restoration.zip" ]; then
           echo "Using cached Fallout2 Restoration Project"
           cp ~/.cache/fallout2-restoration.zip ./fallout2-restoration.zip
@@ -65,6 +66,7 @@ jobs:
 
     - name: Download sfall
       run: |
+        mkdir -p ~/.cache
         if [ -f "~/.cache/sfall.zip" ]; then
           echo "Using cached sfall"
           cp ~/.cache/sfall.zip ./sfall.zip
