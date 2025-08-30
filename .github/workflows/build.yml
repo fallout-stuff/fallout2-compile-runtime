@@ -87,17 +87,13 @@ jobs:
         rm -rf Fallout2_Restoration_Project
         rm -rf sfall
 
-    - name: Create bin directory and extract binaries
-      run: |
-        mkdir -p ./bin
-        unzip fallout2-runtime-binaries.zip -d ./bin/
+
 
     - name: List final structure
       run: |
         echo "Final project structure:"
         find . -type f -name "*.h" | head -10
         find . -type f -name "*.ssl" | head -10
-        ls -la ./bin/
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -106,7 +102,6 @@ jobs:
         path: |
           headers/
           scripts/
-          bin/
 
     - name: Get tag info
       id: get_tag
@@ -124,7 +119,7 @@ jobs:
     - name: Create release zip
       run: |
         # Create a zip file with the specific naming format
-        zip -r fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip headers/ scripts/ bin/
+        zip -r fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip headers/ scripts/
         echo "Created: fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip"
 
     - name: Create release
@@ -134,5 +129,5 @@ jobs:
         # Create a new release with the current tag
         gh release create ${{ steps.get_tag.outputs.current_tag }} \
           --title "Fallout2 Script Compile Runtime ${{ steps.get_tag.outputs.version }}" \
-          --notes "Automated release of Fallout2 runtime with headers, scripts, and binaries." \
+          --notes "Automated release of Fallout2 runtime with headers and scripts." \
           fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip
