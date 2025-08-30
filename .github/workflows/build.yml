@@ -1,0 +1,105 @@
+name: Build Fallout2 Runtime
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup environment
+      run: |
+        # Remove existing directories if they exist
+        rm -rf ./headers
+        rm -rf ./scripts
+        rm -rf ./bin
+
+    - name: Clone Fallout2 Restoration Project
+      run: |
+        git clone https://github.com/BGforgeNet/Fallout2_Restoration_Project.git
+
+    - name: Move headers and scripts
+      run: |
+        mv Fallout2_Restoration_Project/scripts_src/headers ./headers
+        mv Fallout2_Restoration_Project/scripts_src ./scripts
+
+    - name: Clone sfall
+      run: |
+        git clone https://github.com/sfall-team/sfall.git
+
+    - name: Move sfall headers
+      run: |
+        mv sfall/artifacts/scripting/headers ./headers/sfall
+
+    - name: Clean up cloned repositories
+      run: |
+        rm -rf Fallout2_Restoration_Project
+        rm -rf sfall
+
+    - name: Create bin directory and extract binaries
+      run: |
+        mkdir -p ./bin
+        unzip fallout2-runtime-binaries.zip -d ./bin/
+
+    - name: List final structure
+      run: |
+        echo "Final project structure:"
+        find . -type f -name "*.h" | head -10
+        find . -type f -name "*.ssl" | head -10
+        ls -la ./bin/
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: fallout2-runtime
+        path: |
+          headers/
+          scripts/
+          bin/
+
+    - name: Get latest tag
+      id: get_tag
+      run: |
+        # Get the latest tag from the repository
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
+        # Remove 'v' prefix if it exists
+        VERSION=${LATEST_TAG#v}
+        echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Using tag: $LATEST_TAG"
+        echo "Version: $VERSION"
+
+    - name: Check if release exists
+      id: check_release
+      run: |
+        # Check if a release with this tag already exists
+        RELEASE_EXISTS=$(gh release list --limit 1000 | grep -c "${{ steps.get_tag.outputs.latest_tag }}" || echo "0")
+        echo "release_exists=$RELEASE_EXISTS" >> $GITHUB_OUTPUT
+        echo "Release exists: $RELEASE_EXISTS"
+
+    - name: Create release zip
+      if: steps.check_release.outputs.release_exists == '0' && github.event_name == 'push'
+      run: |
+        # Create a zip file with the specific naming format
+        zip -r fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip headers/ scripts/ bin/
+        echo "Created: fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip"
+
+    - name: Create release
+      if: steps.check_release.outputs.release_exists == '0' && github.event_name == 'push'
+      run: |
+        # Create a new release with the latest tag
+        gh release create ${{ steps.get_tag.outputs.latest_tag }} \
+          --title "Fallout2 Runtime ${{ steps.get_tag.outputs.version }}" \
+          --notes "Automated release of Fallout2 runtime with headers, scripts, and binaries." \
+          fallout2-compile-runtime-${{ steps.get_tag.outputs.version }}.zip
