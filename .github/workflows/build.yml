@@ -125,16 +125,6 @@ jobs:
         echo "Version: $VERSION"
         echo "Tag matches current commit: $TAG_MATCHES_COMMIT"
 
-    - name: Check if release exists
-      id: check_release
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        # Check if a release with this tag already exists
-        RELEASE_EXISTS=$(gh release list --limit 1000 | grep -c "${{ steps.get_tag.outputs.latest_tag }}" || echo "0")
-        echo "release_exists=$RELEASE_EXISTS" >> $GITHUB_OUTPUT
-        echo "Release exists: $RELEASE_EXISTS"
-
     - name: Create release zip
       if: steps.get_tag.outputs.tag_matches_commit == 'true' && steps.check_release.outputs.release_exists == '0' && github.event_name == 'push'
       run: |
