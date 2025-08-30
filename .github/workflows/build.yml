@@ -28,7 +28,7 @@ jobs:
     - name: Download and extract Watcom ISO
       run: |
         echo "Downloading Watcom CPP 11.0 ISO..."
-        curl -L -o watcom.7z "https://dl-alt1.winworldpc.com/Watcom%20CPP%2011.0%20B%20(CD).7z"
+        curl "https://dl-alt1.winworldpc.com/Watcom%20CPP%2011.0%20B%20(CD).7z" > watcom.7z
 
         echo "Extracting 7z archive..."
         7z x watcom.7z -o./watcom_extract
